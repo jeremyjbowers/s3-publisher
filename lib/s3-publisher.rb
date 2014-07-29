@@ -10,7 +10,7 @@ require 'mime-types'
 # * queue data to be published with push
 # * call run to actually upload the data to S3
 class S3Publisher
-  
+
   attr_reader :bucket_name, :base_path, :logger, :workers_to_use
 
   # Block style.  run is called for you on block close.
@@ -35,7 +35,7 @@ class S3Publisher
     s3_opts = {}
     s3_opts[:access_key_id]     = opts[:access_key_id]     if opts.key?(:access_key_id)
     s3_opts[:secret_access_key] = opts[:secret_access_key] if opts.key?(:secret_access_key)
-    
+
     @s3 = AWS::S3.new(s3_opts)
 
     @bucket_name, @base_path = bucket_name, opts[:base_path]
@@ -56,9 +56,9 @@ class S3Publisher
   #                                      you can provide :xml, :html, :text, or your own custom string.
   def push key_name, opts={}
     write_opts = { acl: 'public-read' }
-    
+
     key_name = "#{base_path}/#{key_name}" unless base_path.nil?
-    
+
     # Setup data.
     if opts[:data]
       contents = opts[:data]
@@ -88,8 +88,8 @@ class S3Publisher
     opts[:gzip] = true unless opts.has_key?(:gzip)
 
     @publish_queue.push({ key_name: key_name, contents: contents, write_opts: write_opts, gzip: opts[:gzip] })
-  end  
-    
+  end
+
   # Process queued uploads and push to S3
   def run
     threads = []
@@ -97,26 +97,26 @@ class S3Publisher
     threads.each { |t| t.join }
     true
   end
-  
+
   def inspect
     "#<S3Publisher:#{bucket_name}>"
   end
-  
+
   private
   def gzip data
     gzipped_data = StringIO.open('', 'w+')
-    
+
     gzip_writer = Zlib::GzipWriter.new(gzipped_data)
     gzip_writer.write(data)
     gzip_writer.close
-    
+
     return gzipped_data.string
   end
-  
+
   def publish_from_queue
     loop do
       item = @publish_queue.pop(true)
-    
+
       try_count = 0
       begin
         obj = @s3.buckets[bucket_name].objects[item[:key_name]]
@@ -136,10 +136,10 @@ class S3Publisher
         try_count += 1
         retry
       end
-    
-      logger << "Wrote http://#{bucket_name}.s3.amazonaws.com/#{item[:key_name]} with #{item[:write_opts].inspect}\n"
+
+      # logger << "Wrote http://#{bucket_name}.s3.amazonaws.com/#{item[:key_name]} with #{item[:write_opts].inspect}\n"
     end
   rescue ThreadError  # ThreadError hit when queue is empty.  Simply jump out of loop and return to join().
   end
-  
+
 end
